@@ -1,0 +1,6 @@
+repo:
+  name: Eamonn's CloudFormation templates
+  config:
+    type: github
+    owner: eamonnfaherty
+    repo: cloudformation-templates
