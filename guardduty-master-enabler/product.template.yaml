@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Enable Guard Duty for region
+
+Parameters:
+  Enable:
+    Type: String
+    AllowedValues:
+      - True
+      - False
+  FindingPublishingFrequency:
+    Type: String
+    AllowedValues:
+      - FIFTEEN_MINUTES
+      - ONE_HOUR
+      - SIX_HOURS
+
+Resources:
+  Detector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: !Ref Enable
+      FindingPublishingFrequency: !Ref FindingPublishingFrequency
+
+Outputs:
+  DetectorId:
+    Value: !Ref Detector

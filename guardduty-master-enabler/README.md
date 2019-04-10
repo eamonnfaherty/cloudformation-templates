@@ -1,0 +1,1 @@
+This AWS Cloudformation template will enable GuardDuty for the region of the account it is run in.
