@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Dependency for guard duty enabler
+
+Parameters:
+  MasterAccountId:
+    Type: String
+    MinLength: 12
+    MaxLength: 12
+
+Resources:
+  EnablerFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EnablerFunctionRole
+      Path: /guardduty-enabler/
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref MasterAccountId
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonGuardDutyFullAccess

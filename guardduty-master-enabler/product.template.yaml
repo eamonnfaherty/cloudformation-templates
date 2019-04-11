@@ -1,26 +1,61 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Enable Guard Duty for region
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Enable Guard Duty for every region in your account
 
 Parameters:
-  Enable:
+  AssumableOrgRoleArn:
     Type: String
-    AllowedValues:
-      - True
-      - False
-  FindingPublishingFrequency:
+  TargetOU:
     Type: String
-    AllowedValues:
-      - FIFTEEN_MINUTES
-      - ONE_HOUR
-      - SIX_HOURS
+  SpokeIAMPath:
+    Type: String
+    Default: /guardduty-enabler/
+  SpokeIAMRole:
+    Type: String
+    Default: EnablerFunctionRole
 
 Resources:
-  Detector:
-    Type: AWS::GuardDuty::Detector
+  EnablerFunctionRole:
+    Type: AWS::IAM::Role
     Properties:
-      Enable: !Ref Enable
-      FindingPublishingFrequency: !Ref FindingPublishingFrequency
+      Path: /guardduty-enabler/
+      Policies:
+        - PolicyName: ServiceCatalogActions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: arn:aws:iam::*:role/guardduty-enabler/EnablerFunctionRole
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: !Ref AssumableOrgRoleArn
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+        - arn:aws:iam::aws:policy/AmazonGuardDutyFullAccess
 
-Outputs:
-  DetectorId:
-    Value: !Ref Detector
+  EnablerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: index.handler
+      CodeUri: ./deploy
+      Timeout: 900
+      Role: !GetAtt EnablerFunctionRole.Arn
+      Environment:
+        Variables:
+          ASSUMABLE_ORG_ROLE_ARN: !Ref AssumableOrgRoleArn
+          TARGET_OU: !Ref TargetOU
+          SPOKE_IAM_PATH: !Ref SpokeIAMPath
+          SPOKE_IAM_ROLE: !Ref SpokeIAMRole
