@@ -1,6 +1,6 @@
-import os
 from betterboto import client as betterboto_client
-import logging
+import json, logging, os
+from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
@@ -90,7 +90,8 @@ def enable_and_accept_children(master_guardduty, master_detector_id, children, m
             ) as child_guard_duty:
                 response = child_guard_duty.list_invitations()
                 for invitation in response.get('Invitations', []):
-                    if invitation.get('AccountId') == my_account_id and invitation.get('RelationshipStatus') == 'Invited':
+                    if invitation.get('AccountId') == my_account_id and invitation.get(
+                            'RelationshipStatus') == 'Invited':
                         invitation_id = invitation.get('InvitationId')
                         child_detector_id = get_or_create_detector(child_guard_duty)
                         child_guard_duty.accept_invitation(
@@ -105,10 +106,46 @@ def enable_and_accept_children(master_guardduty, master_detector_id, children, m
                             DetectorId=master_detector_id
                         )
                         if len(response.get('UnprocessedAccounts')) > 0:
-                            raise Exception("UnprocessedAccounts when starting to monitor: {}".format(response.get('UnprocessedAccounts')))
+                            raise Exception("UnprocessedAccounts when starting to monitor: {}".format(
+                                response.get('UnprocessedAccounts')))
 
 
-def handler(event, context):
+def handler(e, context):
+    rt = e['RequestType']
+    try:
+        logger.info(rt)
+        if rt == 'Create':
+            do_handler(e, context)
+            send_response(
+                e,
+                context,
+                "SUCCESS",
+                {
+                    "Message": "Resource creation successful!",
+                }
+            )
+        elif rt == 'Update':
+            do_handler(e, context)
+            send_response(e, context, "SUCCESS",
+                          {"Message": "Updated"})
+        elif rt == 'Delete':
+            raise Exception("Delete is not supported for this resource")
+        else:
+            send_response(e, context, "FAILED",
+                          {"Message": "Unexpected"})
+    except Exception as ex:
+        logger.error(ex)
+        send_response(
+            e,
+            context,
+            "FAILED",
+            {
+                "Message": "Exception"
+            }
+        )
+
+
+def do_handler(e, context):
     my_account_id = context.invoked_function_arn.split(':')[4]
     with betterboto_client.ClientContextManager('guardduty') as master_guardduty:
         master_detector_id = get_or_create_detector(master_guardduty)
@@ -125,3 +162,23 @@ def handler(event, context):
         enable_and_accept_children(
             master_guardduty, master_detector_id, children, my_account_id
         )
+
+
+def send_response(e, c, rs, rd):
+    r = json.dumps({
+        "Status": rs,
+        "Reason": "CloudWatch Log Stream: " + c.log_stream_name,
+        "PhysicalResourceId": c.log_stream_name,
+        "StackId": e['StackId'],
+        "RequestId": e['RequestId'],
+        "LogicalResourceId": e['LogicalResourceId'],
+        "Data": rd
+    })
+    d = str.encode(r)
+    h = {
+        'content-type': '',
+        'content-length': str(len(d))
+    }
+    req = Request(e['ResponseURL'], data=d, method='PUT', headers=h)
+    r = urlopen(req)
+    logger.info("Status message: {} {}".format(r.msg, r.getcode()))

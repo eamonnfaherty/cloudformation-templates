@@ -1,1 +1,7 @@
-This AWS Cloudformation template will enable GuardDuty for the region of the account it is run in.
+
+
+
+
+## debugging
+
+BUCKET_NAME=your-bucket-name BUCKET_PREFIX=your-s3-prefix make build package-and-deploy

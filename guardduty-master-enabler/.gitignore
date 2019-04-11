@@ -1,3 +1,4 @@
 venv
 deploy
 *.iml
+product.template-*-*-*.yaml

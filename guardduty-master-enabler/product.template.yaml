@@ -59,3 +59,12 @@ Resources:
           TARGET_OU: !Ref TargetOU
           SPOKE_IAM_PATH: !Ref SpokeIAMPath
           SPOKE_IAM_ROLE: !Ref SpokeIAMRole
+
+  Enable:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt EnablerFunction.Arn
+      AssumableOrgRoleArn: !Ref AssumableOrgRoleArn
+      TargetOU: !Ref TargetOU
+      SpokeIAMPath: !Ref SpokeIAMPath
+      SpokeIAMRole: !Ref SpokeIAMRole
