@@ -22,9 +22,8 @@ def get_or_create_detector(guardduty):
         raise Exception("Unsupported response: {}".format(detectors))
 
 
-def get_children():
+def get_children(target_ou):
     assumable_org_role_arn = os.environ.get('ASSUMABLE_ORG_ROLE_ARN')
-    target_ou = os.environ.get('TARGET_OU')
     with betterboto_client.CrossAccountClientContextManager(
             'organizations', assumable_org_role_arn, 'organizations'
     ) as cross_account_organizations:
@@ -110,12 +109,17 @@ def enable_and_accept_children(master_guardduty, master_detector_id, children, m
                                 response.get('UnprocessedAccounts')))
 
 
-def handler(e, context):
+def handler_custom_resource(e, context):
     rt = e['RequestType']
     try:
         logger.info(rt)
         if rt == 'Create':
-            do_handler(e, context)
+            handler(
+                {
+                    'target_ou': os.environ.get('TARGET_OU')
+                },
+                context
+            )
             send_response(
                 e,
                 context,
@@ -125,7 +129,7 @@ def handler(e, context):
                 }
             )
         elif rt == 'Update':
-            do_handler(e, context)
+            handler(e, context)
             send_response(e, context, "SUCCESS",
                           {"Message": "Updated"})
         elif rt == 'Delete':
@@ -145,11 +149,15 @@ def handler(e, context):
         )
 
 
-def do_handler(e, context):
+def handler_scheduler(e, context):
+    handler({'target_ou': os.environ.get('TARGET_OU')}, context)
+
+
+def handler(e, context):
     my_account_id = context.invoked_function_arn.split(':')[4]
     with betterboto_client.ClientContextManager('guardduty') as master_guardduty:
         master_detector_id = get_or_create_detector(master_guardduty)
-        children = get_children()
+        children = get_children(e.get('target_ou'))
         logger.info("Found children: {}".format(children))
         response = master_guardduty.list_members_single_page(
             DetectorId=master_detector_id, OnlyAssociated='false'
