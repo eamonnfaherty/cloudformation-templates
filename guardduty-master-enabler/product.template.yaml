@@ -1,18 +1,26 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
-Description: Enable Guard Duty for every region in your account
+Description: |
+  This creates a few things in your account:
+    - It will create a lambda that allows you to add all members of an organisational unit.
+    - It will create a custom resource that will trigger that when the stack is created.
+    - It will optionally create a CloudWatch Event rule that triggers on the given ScheduledExpression.
 
 Parameters:
   AssumableOrgRoleArn:
     Type: String
+    Description: The IAM Role ARN that can be assumed from the account this template is run in
   TargetOU:
     Type: String
+    Description: The path or ou id used to search for members in
   SpokeIAMPath:
     Type: String
     Default: /guardduty-enabler/
+    Description: The path of the spoke role that should be assumed to enable guardduty in
   SpokeIAMRole:
     Type: String
     Default: EnablerFunctionRole
+    Description: The name of the spoke role that should be assumed to enable guardduty in
   ScheduleExpression:
     Type: String
     Default: None
@@ -54,6 +62,9 @@ Resources:
 
   EnablerFunction:
     Type: AWS::Serverless::Function
+    Description: |
+      A lambda function that can be invoked with a param similar to ```{"target_ou": "/"}``` that will get all children within
+      the target_ou and enable guardduty and invite to the master.
     Properties:
       Runtime: python3.7
       Handler: index.handler
@@ -143,3 +154,8 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt SchedulingRule.Arn
 
+Outputs:
+  EnablerFunctionName:
+    Description: |
+      The Lambda you can invoke with a param of ```{"target_ou": "/"}```
+    Value: !Ref EnablerFunction
