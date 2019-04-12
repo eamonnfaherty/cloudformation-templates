@@ -103,6 +103,15 @@ Resources:
         Variables:
           TARGET_OU: !Ref TargetOU
 
+  Enable:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt EnablerFunctionCusomResource.Arn
+      AssumableOrgRoleArn: !Ref AssumableOrgRoleArn
+      TargetOU: !Ref TargetOU
+      SpokeIAMPath: !Ref SpokeIAMPath
+      SpokeIAMRole: !Ref SpokeIAMRole
+
   EnablerFunctionScheduler:
     Type: AWS::Serverless::Function
     Condition: NeedsScheduling
@@ -134,11 +143,3 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt SchedulingRule.Arn
 
-  Enable:
-    Type: Custom::CustomResource
-    Properties:
-      ServiceToken: !GetAtt EnablerFunctionCusomResource.Arn
-      AssumableOrgRoleArn: !Ref AssumableOrgRoleArn
-      TargetOU: !Ref TargetOU
-      SpokeIAMPath: !Ref SpokeIAMPath
-      SpokeIAMRole: !Ref SpokeIAMRole
